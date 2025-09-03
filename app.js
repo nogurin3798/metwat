@@ -44,20 +44,20 @@ function LineChart({ data, xKey, yKey, label }){
 function App(){
   const [dt, setDt] = useState(nowISO());
   const [weight,setWeight]=useState('57');
-  const [distance,setDistance]=useState('3.0');
-  const [time,setTime]=useState('38');
-  const [ascent,setAscent]=useState('72');
+  const [distance,setDistance]=useState('3.4');
+  const [time,setTime]=useState('42');
+  const [ascent,setAscent]=useState('82');
 
-  const [age, setAge]     = useState('72');
-  const [restHR, setRestHR] = useState('61');
+  const [age, setAge]     = useState('66');
+  const [restHR, setRestHR] = useState('75');
   const [avgHR, setAvgHR] = useState('85');
   const [borgPre, setBorgPre] = useState('9');
-  const [borgPost, setBorgPost] = useState('12');
+  const [borgPost, setBorgPost] = useState('13');
 
-  const [bpPreSys, setBpPreSys] = useState('124');
-  const [bpPreDia, setBpPreDia] = useState('84');
-  const [bpPostSys, setBpPostSys] = useState('137');
-  const [bpPostDia, setBpPostDia] = useState('92');
+  const [bpPreSys, setBpPreSys] = useState('128');
+  const [bpPreDia, setBpPreDia] = useState('94');
+  const [bpPostSys, setBpPostSys] = useState('126');
+  const [bpPostDia, setBpPostDia] = useState('99');
 
   useEffect(()=>{
     const last = localStorage.getItem('rehab_last_inputs');
@@ -104,6 +104,8 @@ function App(){
       bpPreSys, bpPreDia, bpPostSys, bpPostDia,
       MET: Number(values.MET?.toFixed(2)),
       WAT: Number(values.WAT?.toFixed(0)),
+      Speed: Number(values.kmh?.toFixed(2)),
+      Energy: Number(values.energy?.toFixed(0)),
       zoneLow: Number(values.zoneLow?.toFixed(0)),
       zoneHigh: Number(values.zoneHigh?.toFixed(0)),
       pctHRR: Number(values.pctHRR?.toFixed(0))
@@ -121,13 +123,13 @@ function App(){
   };
 
   const exportCSV = ()=>{
-    const header = ['日時','体重','距離(km)','時間(分)','上り(m)','年齢','安静HR','平均HR','Borg前','Borg後','BP前(収縮/拡張)','BP後(収縮/拡張)','MET','WAT(W)','目標HR下限','目標HR上限','%HRR'];
+    const header = ['日時','体重','距離(km)','時間(分)','上り(m)','年齢','安静HR','平均HR','Borg前','Borg後','BP前(収縮/拡張)','BP後(収縮/拡張)','MET','WAT(W)','速度(km/h)','消費エネルギー(kcal)','目標HR下限','目標HR上限','%HRR'];
     const rows = log.map(r=>[
       r.dt, r.weight, r.distance, r.time, r.ascent, r.age, r.restHR, r.avgHR, r.borgPre, r.borgPost,
       `${r.bpPreSys}/${r.bpPreDia}`, `${r.bpPostSys}/${r.bpPostDia}`,
-      r.MET, r.WAT, r.zoneLow, r.zoneHigh, r.pctHRR
+      r.MET, r.WAT, r.Speed, r.Energy, r.zoneLow, r.zoneHigh, r.pctHRR
     ]);
-    const csv = [header.join(','), ...rows.map(a=>a.join(','))].join('\n');
+    const csv = [header.join(','), ...rows.map(a=>a.join(','))].join('\\n');
     const blob = new Blob([csv], {type:'text/csv'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -137,7 +139,7 @@ function App(){
 
   return React.createElement('div',{className:'container'},
     React.createElement('div',{className:'card pad'},
-      React.createElement('div',{className:'title'},'MET・WAT + 心拍・Borg・血圧 ログ（PWA v4.1）'),
+      React.createElement('div',{className:'title'},'MET・WAT + 心拍・Borg・血圧 ログ（PWA v4.2）'),
       React.createElement('div',{className:'grid inputs', style:{marginTop:8}},
         React.createElement('div',null,React.createElement('label',null,'日時'), React.createElement('input',{type:'datetime-local', value:dt, onChange:e=>setDt(e.target.value)})),
         React.createElement('div',null,React.createElement('label',null,'体重 (kg)'), React.createElement('input',{value:weight,onChange:e=>setWeight(e.target.value)})),
@@ -145,24 +147,17 @@ function App(){
         React.createElement('div',null,React.createElement('label',null,'時間 (分)'), React.createElement('input',{value:time,onChange:e=>setTime(e.target.value)})),
         React.createElement('div',null,React.createElement('label',null,'上り (m)'), React.createElement('input',{value:ascent,onChange:e=>setAscent(e.target.value)}))
       ),
-      React.createElement('div',{className:'grid inputs', style:{marginTop:8}},
-        React.createElement('div',null,React.createElement('label',null,'年齢'), React.createElement('input',{value:age,onChange:e=>setAge(e.target.value)})),
-        React.createElement('div',null,React.createElement('label',null,'安静時心拍 (bpm)'), React.createElement('input',{value:restHR,onChange:e=>setRestHR(e.target.value)})),
-        React.createElement('div',null,React.createElement('label',null,'平均心拍 (bpm)'), React.createElement('input',{value:avgHR,onChange:e=>setAvgHR(e.target.value)})),
-        React.createElement('div',null,React.createElement('label',null,'Borg 前'), React.createElement('input',{value:borgPre,onChange:e=>setBorgPre(e.target.value)})),
-        React.createElement('div',null,React.createElement('label',null,'Borg 後'), React.createElement('input',{value:borgPost,onChange:e=>setBorgPost(e.target.value)}))
-      ),
-      React.createElement('div',{className:'grid inputs', style:{marginTop:8}},
-        React.createElement('div',null,React.createElement('label',null,'血圧 前（収縮）'), React.createElement('input',{value:bpPreSys,onChange:e=>setBpPreSys(e.target.value)})),
-        React.createElement('div',null,React.createElement('label',null,'血圧 前（拡張）'), React.createElement('input',{value:bpPreDia,onChange:e=>setBpPreDia(e.target.value)})),
-        React.createElement('div',null,React.createElement('label',null,'血圧 後（収縮）'), React.createElement('input',{value:bpPostSys,onChange:e=>setBpPostSys(e.target.value)})),
-        React.createElement('div',null,React.createElement('label',null,'血圧 後（拡張）'), React.createElement('input',{value:bpPostDia,onChange:e=>setBpPostDia(e.target.value)}))
-      ),
       React.createElement('div',{className:'grid',style:{gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', marginTop:12}},
         React.createElement(Stat,{label:'MET',value:`${fmt(values.MET,2)}`}),
         React.createElement(Stat,{label:'WAT',value:`${fmt(values.WAT,0)} W`}),
+        React.createElement(Stat,{label:'速度 v',value:`${fmt(values.kmh,2)} km/h`}),
+        React.createElement(Stat,{label:'消費エネルギー',value:`${fmt(values.energy,0)} kcal`})
+      ),
+      React.createElement('div',{className:'grid',style:{gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', marginTop:12}},
+        React.createElement(Stat,{label:'平均心拍 (入力)',value:`${avgHR||'-'} bpm`}),
         React.createElement(Stat,{label:'推定HRmax (Tanaka)',value:`${fmt(values.HRmax,0)} bpm`}),
-        React.createElement(Stat,{label:'目標ゾーン (40–60% HRR)',value:`${fmt(values.zoneLow,0)}–${fmt(values.zoneHigh,0)} bpm`})
+        React.createElement(Stat,{label:'目標ゾーン (40–60% HRR)',value:`${fmt(values.zoneLow,0)}–${fmt(values.zoneHigh,0)} bpm`}),
+        React.createElement(Stat,{label:'HRRに対する割合',value:`${fmt(values.pctHRR,0)}%`})
       ),
       React.createElement('div',{className:'stat', style:{marginTop:12}},
         React.createElement('div',{className:'muted'},'平均心拍の判定'),
@@ -177,14 +172,13 @@ function App(){
         React.createElement('button',{className:'secondary',onClick:clearLog},'ログ全削除')
       )
     ),
-
     React.createElement('div',{className:'card pad', style:{marginTop:16}},
       React.createElement('div',{className:'title'},'ログ一覧'),
       React.createElement('div',{style:{overflowX:'auto', marginTop:8}},
         React.createElement('table',null,
           React.createElement('thead',null,
             React.createElement('tr',null,
-              ['日時','距離','時間','上り','平均HR','Borg後','BP前','BP後','MET','WAT'].map((h,i)=>React.createElement('th',{key:i},h))
+              ['日時','距離','時間','上り','平均HR','Borg後','BP前','BP後','MET','WAT','速度','消費kcal'].map((h,i)=>React.createElement('th',{key:i},h))
             )
           ),
           React.createElement('tbody',null,
@@ -198,13 +192,14 @@ function App(){
               React.createElement('td',null,`${r.bpPreSys}/${r.bpPreDia}`),
               React.createElement('td',null,`${r.bpPostSys}/${r.bpPostDia}`),
               React.createElement('td',null,r.MET),
-              React.createElement('td',null,r.WAT)
+              React.createElement('td',null,r.WAT),
+              React.createElement('td',null,r.Speed),
+              React.createElement('td',null,r.Energy)
             ))
           )
         )
       )
     ),
-
     React.createElement('div',{className:'card pad', style:{marginTop:16}},
       React.createElement('div',{className:'title'},'グラフ'),
       React.createElement('div',{className:'grid', style:{gridTemplateColumns:'1fr', marginTop:8}},
@@ -213,7 +208,6 @@ function App(){
         React.createElement(LineChart,{data:[...log].reverse(), xKey:'dt', yKey:'WAT', label:'WAT (W) 推移'})
       )
     ),
-
     React.createElement('p',{className:'muted',style:{marginTop:16}},'※ 本ツールは医療判断の代替ではありません。個別の運動処方は主治医・療法士の指示を優先してください。')
   );
 }
