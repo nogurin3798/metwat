@@ -11,7 +11,17 @@ function Badge({avg, low, high}){
   return React.createElement('span',{className:`badge ${cls}`}, text);
 }
 
+function Tabs({tab,setTab}){
+  const names=[['main','入力・計算'],['log','ログ'],['help','解説']];
+  return React.createElement(React.Fragment,null,
+    names.map(([k,label])=>React.createElement('button',{
+      key:k, className:`tab ${tab===k?'active':''}`, onClick:()=>setTab(k)}, label))
+  );
+}
+
 function App(){
+  const [tab,setTab]=useState('main');
+
   // base inputs
   const [dt,setDt]=useState(()=>new Date().toISOString().slice(0,16));
   const [weight,setWeight]=useState('57');
@@ -28,18 +38,20 @@ function App(){
   const [bp5Sys,setBp5Sys]=useState('112');
   const [bp5Dia,setBp5Dia]=useState('79');
 
-  // external kcal mode
-  const [extKcal,setExtKcal]=useState(''); // e.g., YAMAP calorie
-  const [preferExt,setPreferExt]=useState(true); // which to highlight
+  // external kcal mode + source
+  const [extKcal,setExtKcal]=useState('');
+  const [extSrc,setExtSrc]=useState('watch'); // 'watch' | 'yamap' | 'manual'
+  const [preferExt,setPreferExt]=useState(true);
 
   // load last inputs
   useEffect(()=>{
-    const last = localStorage.getItem('rehab_v45_last');
+    const last = localStorage.getItem('rehab_v46_last');
     if(last){
       try{ const v=JSON.parse(last);
+        setDt(v.dt??new Date().toISOString().slice(0,16));
         setWeight(v.weight??''); setDistance(v.distance??''); setTime(v.time??''); setAscent(v.ascent??'');
         setAge(v.age??''); setRestHR(v.restHR??''); setAvgHR(v.avgHR??''); setBorgPre(v.borgPre??''); setBorgPost(v.borgPost??'');
-        setBp5Sys(v.bp5Sys??''); setBp5Dia(v.bp5Dia??''); setExtKcal(v.extKcal??''); setPreferExt(v.preferExt??true);
+        setBp5Sys(v.bp5Sys??''); setBp5Dia(v.bp5Dia??''); setExtKcal(v.extKcal??''); setExtSrc(v.extSrc??'watch'); setPreferExt(v.preferExt??true);
       }catch(_){}
     }
   },[]);
@@ -56,7 +68,7 @@ function App(){
     const kcal_min = (Number.isFinite(kcal)&&Number.isFinite(t)&&t>0)? kcal/t : NaN;
     const WAT = Number.isFinite(kcal_min)? kcal_min*69.78 : NaN;
     const kmh = (Number.isFinite(d)&&Number.isFinite(t)&&t>0)? d*60/t : NaN;
-    return {VO2,MET,kcal,WAT,kmh};
+    return {VO2,MET,kcal,WAT,kmh,grade,v};
   },[distance,time,ascent,weight]);
 
   // derived from external kcal
@@ -83,11 +95,11 @@ function App(){
 
   // logging
   const [log,setLog]=useState(()=>{
-    try{ return JSON.parse(localStorage.getItem('rehab_v45_log')||'[]'); }catch(_){ return []; }
+    try{ return JSON.parse(localStorage.getItem('rehab_v46_log')||'[]'); }catch(_){ return []; }
   });
 
   const saveLast = ()=>{
-    localStorage.setItem('rehab_v45_last', JSON.stringify({weight,distance,time,ascent,age,restHR,avgHR,borgPre,borgPost,bp5Sys,bp5Dia,extKcal,preferExt}));
+    localStorage.setItem('rehab_v46_last', JSON.stringify({dt,weight,distance,time,ascent,age,restHR,avgHR,borgPre,borgPost,bp5Sys,bp5Dia,extKcal,extSrc,preferExt}));
     alert('入力を次回の初期値として保存しました');
   };
 
@@ -96,143 +108,182 @@ function App(){
       dt, weight, distance, time, ascent, age, restHR, avgHR, borgPre, borgPost, bp5Sys, bp5Dia,
       auto_MET: Number(calc.MET?.toFixed(2)), auto_kcal: Number(calc.kcal?.toFixed(0)), auto_WAT: Number(calc.WAT?.toFixed(0)),
       ext_MET: Number(ext.MET?.toFixed(2)), ext_kcal: Number(ext.kcal?.toFixed(0)), ext_WAT: Number(ext.WAT?.toFixed(0)),
-      preferExt
+      extSrc, preferExt
     };
     const arr=[entry, ...log].slice(0,365);
     setLog(arr);
-    localStorage.setItem('rehab_v45_log', JSON.stringify(arr));
+    localStorage.setItem('rehab_v46_log', JSON.stringify(arr));
     saveLast();
   };
 
-  const exportCSV = ()=>{
-    const header=['日時','距離km','時間分','上りm','年齢','安静HR','平均HR','Borg後','BP5分後','MET(自動)','kcal(自動)','WAT(自動)','MET(外部)','kcal(外部)','WAT(外部)','表示優先'];
-    const rows=log.map(r=>[r.dt,r.distance,r.time,r.ascent,r.age,r.restHR,r.avgHR,r.borgPost,`${r.bp5Sys}/${r.bp5Dia}`,r.auto_MET,r.auto_kcal,r.auto_WAT,r.ext_MET,r.ext_kcal,r.ext_WAT, r.preferExt?'外部':'自動']);
-    const csv=[header.join(','),...rows.map(a=>a.join(','))].join('\n');
-    const blob=new Blob([csv],{type:'text/csv'});
-    const url=URL.createObjectURL(blob); const a=document.createElement('a');
-    a.href=url; a.download='rehab_log_v45.csv'; a.click(); URL.revokeObjectURL(url);
-  };
-
-  return React.createElement('div',null,
-    React.createElement('div',{className:'card'},
-      React.createElement('div',{className:'title'},'Rehab Log v4.5（外部カロリー対応）'),
-      React.createElement('div',{className:'grid inputs', style:{marginTop:8}},
-        React.createElement('div',null, React.createElement('label',null,'日時'), React.createElement('input',{type:'datetime-local', value:dt, onChange:e=>setDt(e.target.value)})),
-        React.createElement('div',null, React.createElement('label',null,'体重 (kg)'), React.createElement('input',{value:weight,onChange:e=>setWeight(e.target.value)})),
-        React.createElement('div',null, React.createElement('label',null,'距離 (km)'), React.createElement('input',{value:distance,onChange:e=>setDistance(e.target.value)})),
-        React.createElement('div',null, React.createElement('label',null,'時間 (分)'), React.createElement('input',{value:time,onChange:e=>setTime(e.target.value)})),
-        React.createElement('div',null, React.createElement('label',null,'上り (m)'), React.createElement('input',{value:ascent,onChange:e=>setAscent(e.target.value)}))
-      ),
-      React.createElement('div',{className:'grid inputs', style:{marginTop:8}},
-        React.createElement('div',null, React.createElement('label',null,'年齢'), React.createElement('input',{value:age,onChange:e=>setAge(e.target.value)})),
-        React.createElement('div',null, React.createElement('label',null,'安静時心拍 (bpm)'), React.createElement('input',{value:restHR,onChange:e=>setRestHR(e.target.value)})),
-        React.createElement('div',null, React.createElement('label',null,'平均心拍 (bpm)'), React.createElement('input',{value:avgHR,onChange:e=>setAvgHR(e.target.value)})),
-        React.createElement('div',null, React.createElement('label',null,'Borg 前'), React.createElement('input',{value:borgPre,onChange:e=>setBorgPre(e.target.value)})),
-        React.createElement('div',null, React.createElement('label',null,'Borg 後'), React.createElement('input',{value:borgPost,onChange:e=>setBorgPost(e.target.value)}))
-      ),
-      React.createElement('div',{className:'grid inputs', style:{marginTop:8}},
-        React.createElement('div',null, React.createElement('label',null,'血圧 5分後（収縮）'), React.createElement('input',{value:bp5Sys,onChange:e=>setBp5Sys(e.target.value)})),
-        React.createElement('div',null, React.createElement('label',null,'血圧 5分後（拡張）'), React.createElement('input',{value:bp5Dia,onChange:e=>setBp5Dia(e.target.value)})),
-        React.createElement('div',null, React.createElement('label',null,'外部アプリの消費カロリー（kcal）※任意（YAMAP等）'), React.createElement('input',{value:extKcal,onChange:e=>setExtKcal(e.target.value), placeholder:'例: 1264'})),
-        React.createElement('div',{className:'switch'}, React.createElement('span',{className:'muted'},'表示優先：'), 
-          React.createElement('label',{className:'pill'}, React.createElement('input',{type:'radio',name:'pref',checked:!preferExt,onChange:()=>setPreferExt(false)}),'自動計算'),
-          React.createElement('label',{className:'pill'}, React.createElement('input',{type:'radio',name:'pref',checked:preferExt,onChange:()=>setPreferExt(true)}),'外部カロリー基準')
+  // views
+  const MainView = React.createElement('div',{className:'card'},
+    React.createElement('div',{className:'title'},'Rehab Log v4.6（外部ソース＋解説タブ）'),
+    React.createElement('div',{className:'grid inputs', style:{marginTop:8}},
+      React.createElement('div',null, React.createElement('label',null,'日時'), React.createElement('input',{type:'datetime-local', value:dt, onChange:e=>setDt(e.target.value)})),
+      React.createElement('div',null, React.createElement('label',null,'体重 (kg)'), React.createElement('input',{value:weight,onChange:e=>setWeight(e.target.value)})),
+      React.createElement('div',null, React.createElement('label',null,'距離 (km)'), React.createElement('input',{value:distance,onChange:e=>setDistance(e.target.value)})),
+      React.createElement('div',null, React.createElement('label',null,'時間 (分)'), React.createElement('input',{value:time,onChange:e=>setTime(e.target.value)})),
+      React.createElement('div',null, React.createElement('label',null,'上り (m)'), React.createElement('input',{value:ascent,onChange:e=>setAscent(e.target.value)}))
+    ),
+    React.createElement('div',{className:'grid inputs', style:{marginTop:8}},
+      React.createElement('div',null, React.createElement('label',null,'年齢'), React.createElement('input',{value:age,onChange:e=>setAge(e.target.value)})),
+      React.createElement('div',null, React.createElement('label',null,'安静時心拍 (bpm)'), React.createElement('input',{value:restHR,onChange:e=>setRestHR(e.target.value)})),
+      React.createElement('div',null, React.createElement('label',null,'平均心拍 (bpm)'), React.createElement('input',{value:avgHR,onChange:e=>setAvgHR(e.target.value)})),
+      React.createElement('div',null, React.createElement('label',null,'Borg 前'), React.createElement('input',{value:borgPre,onChange:e=>setBorgPre(e.target.value)})),
+      React.createElement('div',null, React.createElement('label',null,'Borg 後'), React.createElement('input',{value:borgPost,onChange:e=>setBorgPost(e.target.value)}))
+    ),
+    React.createElement('div',{className:'grid inputs', style:{marginTop:8}},
+      React.createElement('div',null, React.createElement('label',null,'血圧 5分後（収縮）'), React.createElement('input',{value:bp5Sys,onChange:e=>setBp5Sys(e.target.value)})),
+      React.createElement('div',null, React.createElement('label',null,'血圧 5分後（拡張）'), React.createElement('input',{value:bp5Dia,onChange:e=>setBp5Dia(e.target.value)})),
+      React.createElement('div',null, React.createElement('label',null,'外部アプリの消費カロリー（kcal）'), React.createElement('input',{value:extKcal,onChange:e=>setExtKcal(e.target.value), placeholder:'例: 1264'})),
+      React.createElement('div',null, React.createElement('label',null,'外部データの種類'),
+        React.createElement('select',{value:extSrc,onChange:e=>setExtSrc(e.target.value)},
+          React.createElement('option',{value:'watch'},'スマートウォッチ'),
+          React.createElement('option',{value:'yamap'},'YAMAP / 登山'),
+          React.createElement('option',{value:'manual'},'手入力（その他）')
         )
       ),
-
-      // stats rows
-      React.createElement('div',{className:'row', style:{marginTop:8}},
-        React.createElement('div',{className:'stat'},
-          React.createElement('div',{className:'muted'},'MET（自動計算）'),
-          React.createElement('div',{className:'big'}, fmt(calc.MET,2))
-        ),
-        React.createElement('div',{className:'stat'},
-          React.createElement('div',{className:'muted'},'消費kcal（自動計算）'),
-          React.createElement('div',{className:'big'}, fmt(calc.kcal,0))
-        ),
-        React.createElement('div',{className:'stat'},
-          React.createElement('div',{className:'muted'},'WAT（自動計算）'),
-          React.createElement('div',{className:'big'}, fmt(calc.WAT,0),' W')
-        )
-      ),
-      React.createElement('div',{className:'row', style:{marginTop:8}},
-        React.createElement('div',{className:'stat'},
-          React.createElement('div',{className:'muted'},'MET（外部カロリー基準）'),
-          React.createElement('div',{className:'big'}, fmt(ext.MET,2))
-        ),
-        React.createElement('div',{className:'stat'},
-          React.createElement('div',{className:'muted'},'消費kcal（外部入力）'),
-          React.createElement('div',{className:'big'}, fmt(ext.kcal,0))
-        ),
-        React.createElement('div',{className:'stat'},
-          React.createElement('div',{className:'muted'},'WAT（外部基準）'),
-          React.createElement('div',{className:'big'}, fmt(ext.WAT,0),' W')
-        )
-      ),
-
-      React.createElement('div',{className:'row', style:{marginTop:8}},
-        React.createElement('div',{className:'stat'},
-          React.createElement('div',{className:'muted'},'推定HRmax（Tanaka）'),
-          React.createElement('div',{className:'big'}, fmt(HRcalc.HRmax,0),' bpm')
-        ),
-        React.createElement('div',{className:'stat'},
-          React.createElement('div',{className:'muted'},'目標心拍ゾーン（40–60% HRR）'),
-          React.createElement('div',{className:'big'}, `${fmt(HRcalc.low,0)}–${fmt(HRcalc.high,0)} bpm`)
-        ),
-        React.createElement('div',{className:'stat'},
-          React.createElement('div',{className:'muted'},'%HRR（平均心拍の位置）'),
-          React.createElement('div',{className:'big'}, fmt(HRcalc.pct,0),' %')
-        )
-      ),
-      React.createElement('div',{className:'stat', style:{marginTop:8}},
-        React.createElement('div',{className:'muted'},'心拍の判定'),
-        React.createElement('div',{className:'big'}, `${avgHR||'-'} bpm`),
-        React.createElement('div',null, React.createElement(Badge,{avg:num(avgHR), low:HRcalc.low, high:HRcalc.high}))
-      ),
-
-      React.createElement('div',{className:'btns'},
-        React.createElement('button',{onClick:saveLog},'この内容をログ保存'),
-        React.createElement('button',{className:'secondary',onClick:saveLast},'入力値を次回も使う'),
-        React.createElement('button',{className:'secondary',onClick:()=>{
-          const data=JSON.parse(localStorage.getItem('rehab_v45_log')||'[]');
-          const header=['日時','距離km','時間分','上りm','年齢','安静HR','平均HR','Borg後','BP5分後','MET(自動)','kcal(自動)','WAT(自動)','MET(外部)','kcal(外部)','WAT(外部)','表示優先'];
-          const rows=data.map(r=>[r.dt,r.distance,r.time,r.ascent,r.age,r.restHR,r.avgHR,r.borgPost,`${r.bp5Sys}/${r.bp5Dia}`,r.auto_MET,r.auto_kcal,r.auto_WAT,r.ext_MET,r.ext_kcal,r.ext_WAT, r.preferExt?'外部':'自動']);
-          const csv=[header.join(','),...rows.map(a=>a.join(','))].join('\n');
-          const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob);
-          const a=document.createElement('a'); a.href=url; a.download='rehab_log_v45.csv'; a.click(); URL.revokeObjectURL(url);
-        }},'CSVで出力')
+      React.createElement('div',{className:'switch'}, React.createElement('span',{className:'muted'},'表示優先：'), 
+        React.createElement('label',{className:'pill'}, React.createElement('input',{type:'radio',name:'pref',checked:!preferExt,onChange:()=>setPreferExt(false)}),'自動計算'),
+        React.createElement('label',{className:'pill'}, React.createElement('input',{type:'radio',name:'pref',checked:preferExt,onChange:()=>setPreferExt(true)}),'外部カロリー基準')
       )
     ),
 
-    React.createElement('div',{className:'card', style:{marginTop:12}},
-      React.createElement('div',{className:'title'},'ログ一覧'),
-      React.createElement('div',{style:{overflowX:'auto', marginTop:8}},
-        React.createElement('table',null,
-          React.createElement('thead',null, React.createElement('tr',null,
-            ['日時','距離','時間','上り','平均HR','Borg後','BP5分後','MET(自動)','kcal(自動)','WAT(自動)','MET(外部)','kcal(外部)','WAT(外部)','優先'].map((h,i)=>React.createElement('th',{key:i},h))
-          )),
-          React.createElement('tbody',null,
-            log.map((r,i)=>React.createElement('tr',{key:i},
-              React.createElement('td',null,r.dt),
-              React.createElement('td',null,r.distance),
-              React.createElement('td',null,r.time),
-              React.createElement('td',null,r.ascent),
-              React.createElement('td',null,r.avgHR),
-              React.createElement('td',null,r.borgPost),
-              React.createElement('td',null,`${r.bp5Sys}/${r.bp5Dia}`),
-              React.createElement('td',null,r.auto_MET),
-              React.createElement('td',null,r.auto_kcal),
-              React.createElement('td',null,r.auto_WAT),
-              React.createElement('td',null,r.ext_MET),
-              React.createElement('td',null,r.ext_kcal),
-              React.createElement('td',null,r.ext_WAT),
-              React.createElement('td',null,r.preferExt?'外部':'自動')
-            ))
-          )
-        )
+    // stats rows
+    React.createElement('div',{className:'row', style:{marginTop:8}},
+      React.createElement('div',{className:'stat'},
+        React.createElement('div',{className:'muted'},'MET（自動計算）'),
+        React.createElement('div',{className:'big'}, fmt(calc.MET,2))
+      ),
+      React.createElement('div',{className:'stat'},
+        React.createElement('div',{className:'muted'},'消費kcal（自動計算）'),
+        React.createElement('div',{className:'big'}, fmt(calc.kcal,0))
+      ),
+      React.createElement('div',{className:'stat'},
+        React.createElement('div',{className:'muted'},'WAT（自動計算）'),
+        React.createElement('div',{className:'big'}, fmt(calc.WAT,0),' W')
       )
     ),
+    React.createElement('div',{className:'row', style:{marginTop:8}},
+      React.createElement('div',{className:'stat'},
+        React.createElement('div',{className:'muted'},'MET（外部カロリー基準）'),
+        React.createElement('div',{className:'big'}, fmt(ext.MET,2))
+      ),
+      React.createElement('div',{className:'stat'},
+        React.createElement('div',{className:'muted'},'消費kcal（外部入力）'),
+        React.createElement('div',{className:'big'}, fmt(ext.kcal,0))
+      ),
+      React.createElement('div',{className:'stat'},
+        React.createElement('div',{className:'muted'},'WAT（外部基準）'),
+        React.createElement('div',{className:'big'}, fmt(ext.WAT,0),' W')
+      )
+    ),
+    React.createElement('div',{className:'row', style:{marginTop:8}},
+      React.createElement('div',{className:'stat'},
+        React.createElement('div',{className:'muted'},'推定HRmax（Tanaka）'),
+        React.createElement('div',{className:'big'}, fmt(HRcalc.HRmax,0),' bpm')
+      ),
+      React.createElement('div',{className:'stat'},
+        React.createElement('div',{className:'muted'},'目標心拍ゾーン（40–60% HRR）'),
+        React.createElement('div',{className:'big'}, `${fmt(HRcalc.low,0)}–${fmt(HRcalc.high,0)} bpm`)
+      ),
+      React.createElement('div',{className:'stat'},
+        React.createElement('div',{className:'muted'},'%HRR（平均心拍の位置）'),
+        React.createElement('div',{className:'big'}, fmt(HRcalc.pct,0),' %')
+      )
+    ),
+    React.createElement('div',{className:'stat', style:{marginTop:8}},
+      React.createElement('div',{className:'muted'},'心拍の判定'),
+      React.createElement('div',{className:'big'}, `${avgHR||'-'} bpm`),
+      React.createElement('div',null, React.createElement(Badge,{avg:num(avgHR), low:HRcalc.low, high:HRcalc.high}))
+    ),
+    React.createElement('div',{className:'btns'},
+      React.createElement('button',{onClick:saveLog},'この内容をログ保存'),
+      React.createElement('button',{className:'secondary',onClick:()=>{
+        localStorage.setItem('rehab_v46_last', JSON.stringify({dt,weight,distance,time,ascent,age,restHR,avgHR,borgPre,borgPost,bp5Sys,bp5Dia,extKcal,extSrc,preferExt}));
+        alert('入力値を次回の初期値として保存しました');
+      }},'入力値を次回も使う')
+    )
+  );
 
+  const LogView = React.createElement('div',{className:'card'},
+    React.createElement('div',{className:'title'},'ログ一覧 / CSV'),
+    React.createElement('div',{className:'btns'},
+      React.createElement('button',{className:'secondary',onClick:()=>{
+        const data=JSON.parse(localStorage.getItem('rehab_v46_log')||'[]');
+        const header=['日時','距離km','時間分','上りm','年齢','安静HR','平均HR','Borg後','BP5分後',
+          'MET(自動)','kcal(自動)','WAT(自動)',
+          'MET(外部)','kcal(外部)','WAT(外部)','外部ソース','表示優先'];
+        const rows=data.map(r=>[r.dt,r.distance,r.time,r.ascent,r.age,r.restHR,r.avgHR,r.borgPost,`${r.bp5Sys}/${r.bp5Dia}`,
+          r.auto_MET,r.auto_kcal,r.auto_WAT,
+          r.ext_MET,r.ext_kcal,r.ext_WAT, r.extSrc, r.preferExt?'外部':'自動']);
+        const csv=[header.join(','),...rows.map(a=>a.join(','))].join('\n');
+        const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob);
+        const a=document.createElement('a'); a.href=url; a.download='rehab_log_v46.csv'; a.click(); URL.revokeObjectURL(url);
+      }},'CSVで出力')
+    ),
+    React.createElement('div',{style:{overflowX:'auto', marginTop:8}},
+      React.createElement('table',null,
+        React.createElement('thead',null, React.createElement('tr',null,
+          ['日時','距離','時間','上り','平均HR','Borg後','BP5分後',
+           'MET(自動)','kcal(自動)','WAT(自動)',
+           'MET(外部)','kcal(外部)','WAT(外部)','外部ソース','優先'].map((h,i)=>React.createElement('th',{key:i},h))
+        )),
+        React.createElement('tbody',null,
+          log.map((r,i)=>React.createElement('tr',{key:i},
+            React.createElement('td',null,r.dt),
+            React.createElement('td',null,r.distance),
+            React.createElement('td',null,r.time),
+            React.createElement('td',null,r.ascent),
+            React.createElement('td',null,r.avgHR),
+            React.createElement('td',null,r.borgPost),
+            React.createElement('td',null,`${r.bp5Sys}/${r.bp5Dia}`),
+            React.createElement('td',null,r.auto_MET),
+            React.createElement('td',null,r.auto_kcal),
+            React.createElement('td',null,r.auto_WAT),
+            React.createElement('td',null,r.ext_MET),
+            React.createElement('td',null,r.ext_kcal),
+            React.createElement('td',null,r.ext_WAT),
+            React.createElement('td',null,({'watch':'ウォッチ','yamap':'YAMAP','manual':'手入力'}[r.extSrc]||'-')),
+            React.createElement('td',null,r.preferExt?'外部':'自動')
+          ))
+        )
+      )
+    )
+  );
+
+  const HelpView = React.createElement('div',{className:'card'},
+    React.createElement('div',{className:'title'},'解説（数式と根拠）'),
+    React.createElement('p',null,'このアプリは、有酸素運動の標準式と心拍処方の代表式を用いて推定値を表示します。'),
+    React.createElement('h3',null,'1) 自動計算（歩行の酸素需要からMET）'),
+    React.createElement('div',{className:'code'},`VO2 = 3.5 + 0.1 × v + 1.8 × v × 勾配
+  - v: 速度 (m/分) = 距離(m) / 時間(分)
+  - 勾配 = 上り(m) / 距離(m)
+MET = VO2 / 3.5`),
+    React.createElement('p',null,'上記はACSMの歩行式を基にし、上りがあるほどMETは高くなります。'),
+    React.createElement('h3',null,'2) 消費カロリー（自動計算）'),
+    React.createElement('div',{className:'code'},'エネルギー消費量 (kcal) = MET × 時間 (h) × 体重 (kg)'),
+    React.createElement('h3',null,'3) 外部カロリー入力（逆算法）'),
+    React.createElement('div',{className:'code'},`入力kcal → MET = 入力kcal / (体重 × 時間[h])
+kcal/分 → WAT ≈ (kcal/分) × 69.78`),
+    React.createElement('p',null,'スマートウォッチやYAMAPなど、外部の推定カロリーを基準にMET/WATを逆算します。'),
+    React.createElement('h3',null,'4) 心拍ゾーン（Karvonen法）'),
+    React.createElement('div',{className:'code'},`HRmax (Tanaka) = 208 − 0.7 × 年齢
+HRR = HRmax − 安静時HR
+目標ゾーン = 安静時HR + (0.40〜0.60) × HRR
+%HRR = (平均HR − 安静時HR) / HRR × 100`),
+    React.createElement('p',null,'β遮断薬内服時は心拍が上がりにくいため、Borg（自覚的運動強度）やMETも併用して総合評価します。')
+  );
+
+  // mount tabs
+  useEffect(()=>{
+    const m = ReactDOM.createRoot(document.getElementById('tabs'));
+    m.render(React.createElement(Tabs,{tab,setTab}));
+  },[tab]);
+
+  return React.createElement(React.Fragment,null,
+    tab==='main'?MainView: tab==='log'?LogView: HelpView,
     React.createElement('p',{className:'muted',style:{marginTop:12}},'※ 本ツールは医療判断の代替ではありません。個別の運動処方は主治医・療法士の指示を優先してください。')
   );
 }
