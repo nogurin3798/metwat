@@ -1,337 +1,54 @@
 <!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>心臓リハビリウォーキング</title>
-  <meta name="theme-color" content="#0ea5e9">
-  <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" href="assets/icons/icon-192.png">
-  <meta name="description" content="スマートウォッチ入力→MET・WAT・kcal・VO2と心拍ゾーンを評価。式/根拠タブ付きのPWA。">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0f172a"/>
+  <title>Rehab Log v4.5（外部カロリー対応）</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <style>
-    :root{--c:#0ea5e9; --ink:#0f172a; --mut:#64748b; --bg:#f8fafc}
-    *{box-sizing:border-box}
-    body{font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans JP, sans-serif; margin:0; background:var(--bg); color:var(--ink)}
-    header{position:sticky; top:0; background:var(--c); color:#fff; padding:12px 16px; font-weight:700; display:flex; gap:12px; align-items:center}
-    main{padding:16px; max-width:980px; margin:0 auto}
-    .card{background:#fff; border-radius:16px; padding:16px; margin:12px 0; box-shadow:0 2px 10px rgba(0,0,0,.06)}
-    .grid{display:grid; grid-template-columns:repeat(3, 1fr); gap:12px}
-    @media(max-width:900px){.grid{grid-template-columns:repeat(2, 1fr)}}
-    @media(max-width:640px){.grid{grid-template-columns:1fr}}
-    label{display:block; font-size:14px; color:#334155; margin-bottom:6px}
-    input, select{width:100%; padding:10px 12px; border:1px solid #cbd5e1; border-radius:12px; background:#fff}
-    button{padding:10px 14px; border:0; border-radius:12px; background:var(--c); color:#fff; font-weight:700; cursor:pointer}
-    .muted{color:var(--mut); font-size:12px}
-    .kpi{display:grid; grid-template-columns:repeat(4, 1fr); gap:12px}
-    .kpi .box{background:#f1f5f9; border-radius:12px; padding:12px}
-    .small{font-size:12px; color:#475569}
-    .big{font-size:24px; font-weight:800}
-    .tags{display:flex; gap:8px; flex-wrap:wrap}
-    .tag{padding:4px 8px; border-radius:999px; font-size:12px; background:#e2e8f0}
-    .ok{background:#dcfce7}
-    .warn{background:#fee2e2}
-    .info{background:#e0f2fe}
-    .zone{height:10px; border-radius:6px; overflow:hidden; background:#e2e8f0; margin-top:6px}
-    .bar{height:100%}
-    .z1{background:#86efac}
-    .z2{background:#fde68a}
-    .z3{background:#fca5a5}
-    .row{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
-    .tabs{display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap}
-    .tab{padding:8px 12px; border-radius:999px; background:#e2e8f0; cursor:pointer; user-select:none}
-    .tab.active{background:var(--c); color:#fff; font-weight:700}
-    .section{display:none}
-    .section.active{display:block}
-    pre{white-space:pre-wrap; background:#0b1220; color:#e5e7eb; padding:12px; border-radius:12px; overflow:auto; font-size:13px}
-    code{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace}
-    .install{display:none; margin-left:auto}
-    a{color:#0369a1}
+    :root { --panel:#ffffff; --text:#0f172a; --muted:#475569; }
+    * { box-sizing: border-box; }
+    body { margin:0; background:linear-gradient(135deg,#fff,#f1f5f9); color:var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
+    .container { max-width: 1080px; margin: 0 auto; padding: 20px; }
+    .card { background: var(--panel); border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 10px 20px rgba(2,6,23,.05); padding:16px; }
+    .grid { display:grid; gap:12px; }
+    .inputs { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+    label { font-size:12px; color:var(--muted); display:block; margin-bottom:6px; }
+    input { width:100%; padding:10px 12px; border-radius:12px; border:1px solid #cbd5e1; font-size:14px; }
+    .title { font-weight:800; font-size:22px; }
+    .stat { padding:12px; border:1px solid #e2e8f0; border-radius:12px; }
+    .big { font-weight:800; font-size:24px; }
+    .muted { color:#64748b; font-size:12px; }
+    .row { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px; }
+    .btns { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+    button { padding:10px 14px; border-radius:12px; border:1px solid #cbd5e1; background:#0f172a; color:#fff; font-weight:600; cursor:pointer; }
+    button.secondary { background:#e2e8f0; color:#0f172a; }
+    table { width:100%; border-collapse: collapse; }
+    th, td { border-bottom:1px solid #e5e7eb; padding:8px; font-size:12px; text-align:left; }
+    th { background:#f8fafc; }
+    .badge { display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px; font-weight:700; }
+    .zone-ok { background:#dcfce7; color:#166534; }
+    .zone-warn { background:#fef9c3; color:#854d0e; }
+    .zone-danger { background:#fee2e2; color:#991b1b; }
+    .pill { display:inline-flex; gap:6px; align-items:center; padding:6px 10px; border-radius:999px; border:1px solid #cbd5e1; background:#fff; }
+    .switch { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
   </style>
 </head>
 <body>
-  <header>
-    心臓リハビリウォーキング
-    <button id="btnInstall" class="install">インストール</button>
-  </header>
-  <main>
-    <div class="card">
-      <div class="tabs">
-        <div class="tab active" data-id="sec-input">入力と結果</div>
-        <div class="tab" data-id="sec-log">記録</div>
-        <div class="tab" data-id="sec-formula">式 / 根拠</div>
-      </div>
-
-      <!-- 入力と結果 -->
-      <section id="sec-input" class="section active">
-        <p class="muted">スマートウォッチのデータ（距離・時間・平均心拍など）を入力すると、MET・WAT相当・kcal・VO₂と心拍ゾーンを評価します。</p>
-        <div class="grid">
-          <div>
-            <label>年齢</label>
-            <input id="age" type="number" min="10" max="100" value="66">
-          </div>
-          <div>
-            <label>安静時心拍数 (拍/分)</label>
-            <input id="restHr" type="number" min="30" max="150" value="60">
-          </div>
-          <div>
-            <label>体重 (kg)</label>
-            <input id="weight" type="number" min="30" max="150" value="57">
-          </div>
-          <div>
-            <label>歩行時間 (分)</label>
-            <input id="minutes" type="number" min="5" max="300" value="30">
-          </div>
-          <div>
-            <label>歩行距離 (km)（任意）</label>
-            <input id="distance" type="number" step="0.01" min="0" placeholder="例: 3.0">
-          </div>
-          <div>
-            <label>平均心拍 (拍/分)</label>
-            <input id="avgHr" type="number" min="40" max="220" value="95">
-          </div>
-          <div>
-            <label>最大心拍 (拍/分)（任意）</label>
-            <input id="maxHr" type="number" min="60" max="230" placeholder="">
-          </div>
-          <div>
-            <label>歩行速度 (km/h)（距離未入力時に使用・任意）</label>
-            <input id="speed" type="number" step="0.1" min="1" max="10" placeholder="例: 4.8">
-          </div>
-        </div>
-        <div class="row" style="margin-top:12px">
-          <button id="btnCalc">計算して記録</button>
-          <span id="status" class="muted"></span>
-        </div>
-
-        <div class="kpi" style="margin-top:16px">
-          <div class="box">
-            <div class="small">MET</div>
-            <div id="kpiMet" class="big">–</div>
-            <div class="small">速度からの近似</div>
-          </div>
-          <div class="box">
-            <div class="small">消費エネルギー</div>
-            <div id="kpiKcal" class="big">–</div>
-            <div class="small">kcal（MET×体重×時間）</div>
-          </div>
-          <div class="box">
-            <div class="small">WAT相当</div>
-            <div id="kpiWatts" class="big">–</div>
-            <div class="small">自転車エルゴ換算の推定</div>
-          </div>
-          <div class="box">
-            <div class="small">推定VO₂</div>
-            <div id="kpiVo2" class="big">–</div>
-            <div class="small">ml/kg/min（3.5×MET）</div>
-          </div>
-        </div>
-
-        <div style="margin-top:16px">
-          <div class="small">心拍ゾーン（Karvonen法）</div>
-          <div id="zoneList" class="tags" style="margin-top:6px"></div>
-          <div class="zone" title="ゾーン帯の分布" style="margin-top:6px">
-            <div id="barZ1" class="bar z1" style="width:33%"></div>
-            <div id="barZ2" class="bar z2" style="width:33%"></div>
-            <div id="barZ3" class="bar z3" style="width:34%"></div>
-          </div>
-          <p id="advice" class="muted" style="margin-top:8px"></p>
-        </div>
-      </section>
-
-      <!-- 記録 -->
-      <section id="sec-log" class="section">
-        <h3>セッション記録</h3>
-        <div id="log"></div>
-      </section>
-
-      <!-- 式 / 根拠 -->
-      <section id="sec-formula" class="section">
-        <h3>式 / 根拠（このアプリでの採用）</h3>
-        <p class="muted">臨床では主治医の指示を優先。以下は一般的な推定式に基づく目安です。</p>
-        <h4>METS / WAT / kcal / VO₂</h4>
-        <pre><code>
-(1) 速度→MET（平地歩行の近似・区分線形）
-  3.0 km/h ≈ 2.5 MET
-  4.0 km/h ≈ 3.0 MET
-  4.8 km/h ≈ 3.5 MET
-  5.0 km/h ≈ 3.8 MET
-  5.5 km/h ≈ 4.3 MET
-  6.0 km/h ≈ 5.0 MET
-  6.5 km/h ≈ 5.3 MET
-
-(2) 消費エネルギー（四捨五入）
-  kcal = MET × 体重(kg) × 時間(h)
-
-(3) VO₂（酸素摂取量・体重当たり）
-  VO₂ (ml/kg/min) = 3.5 × MET
-
-(4) 自転車エルゴ相当のWAT推定（目安）
-  自転車での回帰式: VO₂ = (1.8 × WR / 体重) + 7
-  ここで WR[kgm/min] = Watts × 6.12
-  → Watts ≈ ((VO₂ - 7) × 体重 / 1.8) / 6.12
-        </code></pre>
-
-        <h4>心拍関連（Karvonen法とゾーン）</h4>
-        <pre><code>
-(5) 予測最大心拍数（単純式）
-  HRmax ≈ 220 - 年齢
-  ※個人差が大きい。β遮断薬などで低く出ることも。
-
-(6) 心拍予備能（Heart Rate Reserve）
-  HRR = HRmax - 安静時心拍
-
-(7) Karvonen法による目標心拍
-  目標HR = 安静時心拍 + HRR × 強度(%)
-
-(8) 本アプリのゾーン設計（リハビリ初期を意識）
-  Z1: 40–50%（ウォームアップ〜基本域）
-  Z2: 50–60%（推奨レンジ）
-  Z3: 60–70%（やや強め・注意）
-  Z4: &gt;70%（避ける/主治医の指示下）
-        </code></pre>
-
-        <h4>注意と使い分け</h4>
-        <ul>
-          <li>勾配や路面で実際のMETは変化（上は平地歩行の近似）。</li>
-          <li>服薬（β遮断薬等）で心拍反応が鈍る場合、ゾーン評価がブレます。</li>
-          <li>息切れ・動悸・胸痛・めまい等が出たら中止し、必要なら受診。</li>
-        </ul>
-      </section>
-    </div>
-  </main>
-
+  <div id="root" class="container"></div>
+  <script defer src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script defer src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script defer src="./app.js"></script>
   <script>
-    // ====== Tabs ======
-    const tabs = document.querySelectorAll('.tab');
-    const sections = document.querySelectorAll('.section');
-    tabs.forEach(t => t.addEventListener('click', () => {
-      tabs.forEach(x => x.classList.remove('active'));
-      sections.forEach(s => s.classList.remove('active'));
-      t.classList.add('active');
-      document.getElementById(t.dataset.id).classList.add('active');
-    }));
-
-    // ====== Install (PWA) ======
-    let deferredPrompt = null;
-    const btnInstall = document.getElementById('btnInstall');
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault(); deferredPrompt = e;
-      btnInstall.style.display = 'inline-block';
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(console.error);
     });
-    btnInstall.addEventListener('click', async () => {
-      if (!deferredPrompt) return;
-      deferredPrompt.prompt(); await deferredPrompt.userChoice;
-      deferredPrompt = null; btnInstall.style.display = 'none';
-    });
-
-    // ====== Helpers & Math ======
-    function speedToMET(speed){
-      if (!speed || speed <= 0) return 3.0;
-      const pts = [[3.0,2.5],[4.0,3.0],[4.8,3.5],[5.0,3.8],[5.5,4.3],[6.0,5.0],[6.5,5.3]];
-      for (let i=0;i<pts.length-1;i++){
-        const [x1,y1]=pts[i],[x2,y2]=pts[i+1];
-        if (speed <= x2){ const t=(speed-x1)/(x2-x1); return y1 + t*(y2-y1); }
-      }
-      return 5.5;
-    }
-    function karvonen(age, rest, pct){
-      const hrmax = 220 - age;
-      const hrr = hrmax - rest;
-      return Math.round(rest + hrr * pct);
-    }
-    function zoneLabel(age, rest, avg){
-      const z1L = karvonen(age, rest, 0.40), z1H = karvonen(age, rest, 0.50);
-      const z2L = karvonen(age, rest, 0.50), z2H = karvonen(age, rest, 0.60);
-      const z3L = karvonen(age, rest, 0.60), z3H = karvonen(age, rest, 0.70);
-      if (avg < z1L) return ["Z0", `低強度（${avg} bpm）`];
-      if (avg <= z1H) return ["Z1", `安全域（${avg} bpm）`];
-      if (avg <= z2H) return ["Z2", `推奨域（${avg} bpm）`];
-      if (avg <= z3H) return ["Z3", `やや強め 注意（${avg} bpm）`];
-      return ["Z4", `高強度 控える（${avg} bpm）`];
-    }
-    function calcKcal(met, weight, minutes){
-      const hours = minutes/60;
-      return Math.round(met * weight * hours);
-    }
-    function metToVo2(met){ return 3.5 * met; }
-    function metToWatts(met, weight){
-      const vo2 = metToVo2(met);
-      const wr = (vo2 - 7) * weight / 1.8; // kgm/min
-      return Math.max(0, Math.round(wr / 6.12));
-    }
-    function renderZones(age, rest){
-      const zs = [
-        ["Z1 40–50%", karvonen(age, rest, 0.40), karvonen(age, rest, 0.50), "ok"],
-        ["Z2 50–60%", karvonen(age, rest, 0.50), karvonen(age, rest, 0.60), "info"],
-        ["Z3 60–70%（注意）", karvonen(age, rest, 0.60), karvonen(age, rest, 0.70), "warn"],
-      ];
-      const el = document.getElementById('zoneList');
-      el.innerHTML = zs.map(z => `<span class="tag ${z[3]}">${z[0]}: ${z[1]}〜${z[2]} bpm</span>`).join('');
-    }
-    function renderLog(){
-      const log = document.getElementById('log');
-      const items = JSON.parse(localStorage.getItem('sessions')||'[]').reverse();
-      log.innerHTML = items.length ? '<ol>' + items.map(it => {
-        return `<li>${new Date(it.t).toLocaleString()} — ${it.minutes}分, ${it.distance?.toFixed?.(2) || '-'}km, ${it.speed?.toFixed?.(1) || '-'}km/h, 平均${it.avgHr}bpm, MET ${it.met.toFixed(1)}, ${it.kcal}kcal, VO₂ ${it.vo2.toFixed(1)}</li>`
-      }).join('') + '</ol>' : '<p class="muted">まだ記録はありません。</p>';
-    }
-
-    // ====== 計算と記録 ======
-    document.getElementById('btnCalc').addEventListener('click', () => {
-      const age = Number(document.getElementById('age').value||66);
-      const rest = Number(document.getElementById('restHr').value||60);
-      const weight = Number(document.getElementById('weight').value||60);
-      const minutes = Number(document.getElementById('minutes').value||30);
-      const distance = Number(document.getElementById('distance').value||0);
-      const avgHr = Number(document.getElementById('avgHr').value||0);
-      const maxHr = Number(document.getElementById('maxHr').value||0);
-      let speed = Number(document.getElementById('speed').value||0);
-      if (!speed && distance>0 && minutes>0){ speed = distance / (minutes/60); }
-      if (!speed) speed = 4.0;
-
-      const met = speedToMET(speed);
-      const kcal = calcKcal(met, weight, minutes);
-      const vo2 = metToVo2(met);
-      const watts = metToWatts(met, weight);
-
-      renderZones(age, rest);
-      const [zl, ztxt] = zoneLabel(age, rest, avgHr);
-
-      document.getElementById('kpiMet').textContent = met.toFixed(1);
-      document.getElementById('kpiKcal').textContent = kcal + '';
-      document.getElementById('kpiWatts').textContent = watts + '';
-      document.getElementById('kpiVo2').textContent = vo2.toFixed(1);
-
-      document.getElementById('barZ1').style.width = '33%';
-      document.getElementById('barZ2').style.width = '33%';
-      document.getElementById('barZ3').style.width = '34%';
-
-      const advice = document.getElementById('advice');
-      let msg = '';
-      if (zl === 'Z1') msg = '安全で会話ができる強度。リハビリの基本域。';
-      else if (zl === 'Z2') msg = '推奨レンジ。持久力・代謝改善に有効。体調に合わせて継続を。';
-      else if (zl === 'Z3') msg = 'やや強め。症状があれば中止。主治医の指示がある場合のみ。';
-      else if (zl === 'Z4') msg = '高強度。直ちに負荷を下げ、必要なら中止。';
-      else msg = '低強度。ウォームアップとしてはOK。余裕があれば少しだけ強度↑も。';
-      advice.textContent = ztxt + ' — ' + msg;
-
-      const s = { t: Date.now(), age, rest, weight, minutes, distance, speed, avgHr, maxHr, met, kcal, watts, vo2, zone: zl };
-      const arr = JSON.parse(localStorage.getItem('sessions')||'[]'); arr.push(s);
-      localStorage.setItem('sessions', JSON.stringify(arr));
-      renderLog();
-
-      document.getElementById('status').textContent = '計算と記録が完了しました。';
-    });
-
-    renderZones(66, 60);
-    renderLog();
-
-    // ====== Service Worker ======
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js', { scope: './' });
-      });
-    }
+  }
   </script>
 </body>
 </html>
