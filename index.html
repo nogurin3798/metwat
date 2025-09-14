@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0f172a"/>
-  <title>Rehab Log v4.6（外部ソース＋解説タブ）</title>
+  <title>Rehab Log v4.7（VO2計算＋生活動作目安表）</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -19,28 +19,15 @@
     .tab.active { background:#0f172a; color:#fff; }
     .card { background: var(--panel); border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 10px 20px rgba(2,6,23,.05); padding:16px; }
     .grid { display:grid; gap:12px; }
-    .inputs { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
-    label { font-size:12px; color:var(--muted); display:block; margin-bottom:6px; }
-    input, select { width:100%; padding:10px 12px; border-radius:12px; border:1px solid #cbd5e1; font-size:14px; }
     .title { font-weight:800; font-size:22px; }
     .stat { padding:12px; border:1px solid #e2e8f0; border-radius:12px; }
     .big { font-weight:800; font-size:24px; }
     .muted { color:#64748b; font-size:12px; }
     .row { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px; }
-    .btns { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
-    button { padding:10px 14px; border-radius:12px; border:1px solid #cbd5e1; background:#0f172a; color:#fff; font-weight:600; cursor:pointer; }
-    button.secondary { background:#e2e8f0; color:#0f172a; }
     table { width:100%; border-collapse: collapse; }
     th, td { border-bottom:1px solid #e5e7eb; padding:8px; font-size:12px; text-align:left; }
     th { background:#f8fafc; }
-    .badge { display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px; font-weight:700; }
-    .zone-ok { background:#dcfce7; color:#166534; }
-    .zone-warn { background:#fef9c3; color:#854d0e; }
-    .zone-danger { background:#fee2e2; color:#991b1b; }
-    .pill { display:inline-flex; gap:6px; align-items:center; padding:6px 10px; border-radius:999px; border:1px solid #cbd5e1; background:#fff; }
-    .switch { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-    .code { background:#0b1220; color:#e2e8f0; padding:12px; border-radius:12px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:13px; }
-    ul { padding-left: 18px; }
+    .code { background:#0b1220; color:#e2e8f0; padding:12px; border-radius:12px; font-family: ui-monospace; font-size:13px; }
   </style>
 </head>
 <body>
