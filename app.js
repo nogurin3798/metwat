@@ -4,7 +4,7 @@ const num = v => { const n = Number(String(v??'').replace(/,/g,'').trim()); retu
 const fmt = (n,d=0)=> Number.isFinite(n)? n.toFixed(d):'-';
 
 function Tabs({tab,setTab}){
-  const names=[['main','入力・計算'],['log','ログ'],['help','解説']];
+  const names=[['main','入力・計算'],['log','ログ'],['charts','グラフ'],['help','解説']];
   return React.createElement(React.Fragment,null,
     names.map(([k,label])=>React.createElement('button',{
       key:k, className:`tab ${tab===k?'active':''}`, onClick:()=>setTab(k)}, label))
@@ -20,42 +20,40 @@ function App(){
   const [distance,setDistance]=useState('3.4');
   const [time,setTime]=useState('45');
   const [ascent,setAscent]=useState('82');
-
   const [age,setAge]=useState('66');
   const [restHR,setRestHR]=useState('56');
   const [avgHR,setAvgHR]=useState('95');
+  const [hrAfter,setHrAfter]=useState('');
+  const [hr5min,setHr5min]=useState('');
   const [borgPre,setBorgPre]=useState('9');
   const [borgPost,setBorgPost]=useState('13');
-
-  const [bp5Sys,setBp5Sys]=useState('112');
-  const [bp5Dia,setBp5Dia]=useState('79');
-
+  const [bpPreSys,setBpPreSys]=useState(''); const [bpPreDia,setBpPreDia]=useState('');
+  const [bpPostSys,setBpPostSys]=useState(''); const [bpPostDia,setBpPostDia]=useState('');
+  const [bp5Sys,setBp5Sys]=useState('112'); const [bp5Dia,setBp5Dia]=useState('79');
   const [extKcal,setExtKcal]=useState('');
-  const [extSrc,setExtSrc]=useState('watch'); // watch | yamap | manual
+  const [extSrc,setExtSrc]=useState('watch');
   const [preferExt,setPreferExt]=useState(true);
-
-  // week start option: 'sun' or 'mon'
   const [weekStart,setWeekStart]=useState(()=>{
     try{ return localStorage.getItem('rehab_week_start')||'sun'; }catch(_){ return 'sun'; }
   });
 
-  // load last
   useEffect(()=>{
-    const last = localStorage.getItem('rehab_v48_last');
+    const last48 = localStorage.getItem('rehab_v48_last');
+    const last = last48 || localStorage.getItem('rehab_v47_last');
     if(last){
       try{ const v=JSON.parse(last);
         setDt(v.dt??new Date().toISOString().slice(0,16));
         setWeight(v.weight??''); setDistance(v.distance??''); setTime(v.time??''); setAscent(v.ascent??'');
-        setAge(v.age??''); setRestHR(v.restHR??''); setAvgHR(v.avgHR??''); setBorgPre(v.borgPre??''); setBorgPost(v.borgPost??'');
-        setBp5Sys(v.bp5Sys??''); setBp5Dia(v.bp5Dia??''); setExtKcal(v.extKcal??''); setExtSrc(v.extSrc??'watch'); setPreferExt(v.preferExt??true);
+        setAge(v.age??''); setRestHR(v.restHR??''); setAvgHR(v.avgHR??''); setHrAfter(v.hrAfter??''); setHr5min(v.hr5min??'');
+        setBorgPre(v.borgPre??''); setBorgPost(v.borgPost??'');
+        setBpPreSys(v.bpPreSys??''); setBpPreDia(v.bpPreDia??''); setBpPostSys(v.bpPostSys??''); setBpPostDia(v.bpPostDia??'');
+        setBp5Sys(v.bp5Sys??''); setBp5Dia(v.bp5Dia??'');
+        setExtKcal(v.extKcal??''); setExtSrc(v.extSrc??'watch'); setPreferExt(v.preferExt??true);
       }catch(_){}
     }
   },[]);
-
-  // persist weekStart when changed
   useEffect(()=>{ localStorage.setItem('rehab_week_start', weekStart); },[weekStart]);
 
-  // auto calc
   const auto = useMemo(()=>{
     const d=num(distance), t=num(time), up=num(ascent), w=num(weight);
     const v = (d>0&&t>0)? (d*1000)/t : NaN; // m/min
@@ -71,7 +69,6 @@ function App(){
     return {VO2,MET,kcal,WAT,kmh,grade,v,MET_h,time_hr};
   },[distance,time,ascent,weight]);
 
-  // external-based
   const ext = useMemo(()=>{
     const kcal = num(extKcal);
     const w=num(weight), t=num(time);
@@ -84,7 +81,6 @@ function App(){
     return {MET,VO2,kcal,WAT,MET_h,time_hr};
   },[extKcal, weight, time]);
 
-  // HR zone
   const HRcalc = useMemo(()=>{
     const A=num(age), R=num(restHR), H=num(avgHR);
     const HRmax = Number.isFinite(A)? (208 - 0.7*A):NaN;
@@ -95,61 +91,77 @@ function App(){
     return {HRmax,low,high,pct};
   },[age,restHR,avgHR]);
 
-  // log
   const [log,setLog]=useState(()=>{
-    try{ return JSON.parse(localStorage.getItem('rehab_v48_log')||'[]'); }catch(_){ return []; }
+    try{ return JSON.parse(localStorage.getItem('rehab_v48_log')||localStorage.getItem('rehab_v47_log')||'[]'); }catch(_){ return []; }
   });
 
   const preferred = useMemo(()=> preferExt ? ext : auto,[preferExt, ext, auto]);
 
   const saveLast = ()=>{
-    localStorage.setItem('rehab_v48_last', JSON.stringify({dt,weight,distance,time,ascent,age,restHR,avgHR,borgPre,borgPost,bp5Sys,bp5Dia,extKcal,extSrc,preferExt}));
+    localStorage.setItem('rehab_v48_last', JSON.stringify({
+      dt,weight,distance,time,ascent,age,restHR,avgHR,hrAfter,hr5min,borgPre,borgPost,
+      bpPreSys,bpPreDia,bpPostSys,bpPostDia,bp5Sys,bp5Dia,extKcal,extSrc,preferExt
+    }));
     alert('入力を次回の初期値として保存しました');
   };
 
   const saveLog = ()=>{
     const entry = {
-      dt, weight, distance, time, ascent, age, restHR, avgHR, borgPre, borgPost, bp5Sys, bp5Dia,
+      dt, weight, distance, time, ascent, age, restHR, avgHR, hrAfter, hr5min, borgPre, borgPost,
+      bpPreSys, bpPreDia, bpPostSys, bpPostDia, bp5Sys, bp5Dia,
       auto_MET: Number(auto.MET?.toFixed(2)), auto_VO2: Number(auto.VO2?.toFixed(1)), auto_kcal: Number(auto.kcal?.toFixed(0)), auto_WAT: Number(auto.WAT?.toFixed(0)), auto_METh: Number(auto.MET_h?.toFixed(2)),
       ext_MET: Number(ext.MET?.toFixed(2)), ext_VO2: Number(ext.VO2?.toFixed(1)), ext_kcal: Number(ext.kcal?.toFixed(0)), ext_WAT: Number(ext.WAT?.toFixed(0)), ext_METh: Number(ext.MET_h?.toFixed(2)),
       used_METh: Number((preferExt?ext.MET_h:auto.MET_h)?.toFixed(2)),
+      speed_kmh: Number(auto.kmh?.toFixed(2)), grade_pct: Number((auto.grade*100)?.toFixed(1)),
       extSrc, preferExt
     };
-    const arr=[entry, ...log].slice(0,365);
+    const arr=[entry, ...log].slice(0,500);
     setLog(arr);
     localStorage.setItem('rehab_v48_log', JSON.stringify(arr));
     saveLast();
   };
 
-  // weekly aggregation (switchable week start)
   const weekly = useMemo(()=>{
     const now = new Date();
     let start = new Date(now);
-    if(weekStart==='mon'){
-      const day = (now.getDay()+6)%7; // Mon=0
-      start.setDate(now.getDate()-day);
-    }else{ // 'sun'
-      const day = now.getDay(); // Sun=0
-      start.setDate(now.getDate()-day);
-    }
+    if(weekStart==='mon'){ const day=(now.getDay()+6)%7; start.setDate(now.getDate()-day); }
+    else { start.setDate(now.getDate()-now.getDay()); }
     start.setHours(0,0,0,0);
     const end = new Date(start); end.setDate(start.getDate()+7);
     let sum = 0;
-    const items = (log||[]).filter(r=>{
-      const t = new Date(r.dt);
-      return t>=start && t<end;
-    }).map(r=>{
-      const me = r.preferExt ? (r.ext_METh ?? (r.ext_MET*r.time/60)) : (r.auto_METh ?? (r.auto_MET*r.time/60));
-      const val = Number(me)||0;
-      sum += val;
-      return {dt:r.dt, METh:val};
-    });
-    return {start, end, sum, items};
-  },[log, weekStart]);
+    const items = (log||[]).filter(r=>{ const t=new Date(r.dt); return t>=start && t<end; })
+      .map(r=>{ const me = r.preferExt ? (r.ext_METh ?? (r.ext_MET*r.time/60)) : (r.auto_METh ?? (r.auto_MET*r.time/60)); const val=Number(me)||0; sum+=val; return {dt:r.dt,METh:val}; });
+    return {start,end,sum,items};
+  },[log,weekStart]);
+
+  // charts data
+  const recent = (log||[]).slice(0,20).reverse();
+  const dataHR = recent.map(r=>Number(r.avgHR)||0);
+  const dataMET = recent.map(r=>Number(r.preferExt?r.ext_MET:r.auto_MET)||0);
+  const dataWAT = recent.map(r=>Number(r.preferExt?r.ext_WAT:r.auto_WAT)||0);
+
+  function SimpleChart({data,label}){
+    const w=800, h=220, pad=24;
+    const xs = data.map((_,i)=> pad + (w-2*pad) * (i/(Math.max(1,data.length-1))));
+    const maxY = Math.max(1, ...data);
+    const ys = data.map(v => h-pad - (h-2*pad) * (v/maxY));
+    const points = xs.map((x,i)=>`${x},${ys[i]}`).join(' ');
+    return React.createElement('svg',{width:'100%',height:h,viewBox:`0 0 ${w} ${h}`},
+      React.createElement('rect',{x:0,y:0,width:w,height:h,fill:'#fff',stroke:'#e5e7eb'}),
+      React.createElement('polyline',{points,fill:'none',stroke:'#0ea5e9','strokeWidth':3}),
+      React.createElement('text',{x:pad,y:16,fill:'#334155'},label||''),
+      React.createElement('text',{x:w-pad,y:16,fill:'#334155','textAnchor':'end'},`max ${maxY.toFixed(1)}`)
+    );
+  }
 
   const MainView = React.createElement('div',{className:'card'},
     React.createElement('div',{className:'title'},'Rehab Log v4.8（METs・時 週合計／週開始切替）'),
     React.createElement('div',{className:'grid inputs', style:{marginTop:8}},
+      React.createElement('div',null, React.createElement('label',null,'日時'), React.createElement('input',{type:'datetime-local',value:dt,onChange:e=>setDt(e.target.value)})),
+      React.createElement('div',null, React.createElement('label',null,'体重 (kg)'), React.createElement('input',{value:weight,onChange:e=>setWeight(e.target.value)})),
+      React.createElement('div',null, React.createElement('label',null,'距離 (km)'), React.createElement('input',{value:distance,onChange:e=>setDistance(e.target.value)})),
+      React.createElement('div',null, React.createElement('label',null,'時間 (分)'), React.createElement('input',{value:time,onChange:e=>setTime(e.target.value)})),
+      React.createElement('div',null, React.createElement('label',null,'上り (m)'), React.createElement('input',{value:ascent,onChange:e=>setAscent(e.target.value)})),
       React.createElement('div',null, React.createElement('label',null,'週の開始曜日'),
         React.createElement('select',{value:weekStart,onChange:e=>setWeekStart(e.target.value)},
           React.createElement('option',{value:'sun'},'日曜はじまり'),
@@ -157,17 +169,51 @@ function App(){
         )
       )
     ),
+    React.createElement('div',{className:'grid inputs', style:{marginTop:8}},
+      React.createElement('div',null, React.createElement('label',null,'年齢'), React.createElement('input',{value:age,onChange:e=>setAge(e.target.value)})),
+      React.createElement('div',null, React.createElement('label',null,'安静心拍 (bpm)'), React.createElement('input',{value:restHR,onChange:e=>setRestHR(e.target.value)})),
+      React.createElement('div',null, React.createElement('label',null,'平均心拍 (bpm)'), React.createElement('input',{value:avgHR,onChange:e=>setAvgHR(e.target.value)})),
+      React.createElement('div',null, React.createElement('label',null,'終了直後HR (任意)'), React.createElement('input',{value:hrAfter,onChange:e=>setHrAfter(e.target.value)})),
+      React.createElement('div',null, React.createElement('label',null,'5分後HR (任意)'), React.createElement('input',{value:hr5min,onChange:e=>setHr5min(e.target.value)})),
+      React.createElement('div',null, React.createElement('label',null,'Borg 前'), React.createElement('input',{value:borgPre,onChange:e=>setBorgPre(e.target.value)})),
+      React.createElement('div',null, React.createElement('label',null,'Borg 後'), React.createElement('input',{value:borgPost,onChange:e=>setBorgPost(e.target.value)}))
+    ),
+    React.createElement('div',{className:'grid inputs', style:{marginTop:8}},
+      React.createElement('div',null, React.createElement('label',null,'血圧 前（収縮）'), React.createElement('input',{value:bpPreSys,onChange:e=>setBpPreSys(e.target.value)})),
+      React.createElement('div',null, React.createElement('label',null,'血圧 前（拡張）'), React.createElement('input',{value:bpPreDia,onChange:e=>setBpPreDia(e.target.value)})),
+      React.createElement('div',null, React.createElement('label',null,'血圧 後（収縮）'), React.createElement('input',{value:bpPostSys,onChange:e=>setBpPostSys(e.target.value)})),
+      React.createElement('div',null, React.createElement('label',null,'血圧 後（拡張）'), React.createElement('input',{value:bpPostDia,onChange:e=>setBpPostDia(e.target.value)})),
+      React.createElement('div',null, React.createElement('label',null,'血圧 5分後（収縮）'), React.createElement('input',{value:bp5Sys,onChange:e=>setBp5Sys(e.target.value)})),
+      React.createElement('div',null, React.createElement('label',null,'血圧 5分後（拡張）'), React.createElement('input',{value:bp5Dia,onChange:e=>setBp5Dia(e.target.value)}))
+    ),
+    React.createElement('div',{className:'grid inputs', style:{marginTop:8}},
+      React.createElement('div',null, React.createElement('label',null,'外部の消費kcal（ウォッチ/YAMAP/手入力）'), React.createElement('input',{value:extKcal,onChange:e=>setExtKcal(e.target.value)})),
+      React.createElement('div',null, React.createElement('label',null,'外部ソース'), 
+        React.createElement('select',{value:extSrc,onChange:e=>setExtSrc(e.target.value)},
+          React.createElement('option',{value:'watch'},'ウォッチ'),
+          React.createElement('option',{value:'yamap'},'YAMAP'),
+          React.createElement('option',{value:'manual'},'手入力')
+      )),
+      React.createElement('div',null, React.createElement('label',null,'表示優先'), 
+        React.createElement('select',{value:preferExt?'ext':'auto',onChange:e=>setPreferExt(e.target.value==='ext')},
+          React.createElement('option',{value:'ext'},'外部基準を優先'),
+          React.createElement('option',{value:'auto'},'自動計算を優先')
+      )),
+      React.createElement('div',null, React.createElement('label',null,'速度 v (km/h)'), React.createElement('input',{value:fmt(auto.kmh,2), readOnly:true})),
+      React.createElement('div',null, React.createElement('label',null,'勾配 (%)'), React.createElement('input',{value: Number.isFinite(auto.grade)?(auto.grade*100).toFixed(1):'-', readOnly:true}))
+    ),
     React.createElement('div',{className:'row', style:{marginTop:8}},
-      React.createElement('div',{className:'stat'}, React.createElement('div',{className:'muted'}, preferExt?'MET（外部基準）':'MET（自動計算）'), React.createElement('div',{className:'big'}, fmt(preferred.MET,2))),
-      React.createElement('div',{className:'stat'}, React.createElement('div',{className:'muted'},'METs・時（今回）'), React.createElement('div',{className:'big'}, fmt(preferred.MET_h,2))),
-      React.createElement('div',{className:'stat'}, React.createElement('div',{className:'muted'},'消費kcal（今回）'), React.createElement('div',{className:'big'}, fmt(preferred.kcal,0)))
+      React.createElement('div',{className:'stat'}, React.createElement('div',{className:'muted'}, preferExt?'MET（外部基準）':'MET（自動計算）'), React.createElement('div',{className:'big'}, fmt(preferExt?ext.MET:auto.MET,2))),
+      React.createElement('div',{className:'stat'}, React.createElement('div',{className:'muted'},'VO₂ (mL/kg/min)'), React.createElement('div',{className:'big'}, fmt(preferExt?ext.VO2:auto.VO2,1))),
+      React.createElement('div',{className:'stat'}, React.createElement('div',{className:'muted'},'WAT（推定W）'), React.createElement('div',{className:'big'}, fmt(preferExt?ext.WAT:auto.WAT,0))),
+      React.createElement('div',{className:'stat'}, React.createElement('div',{className:'muted'},'消費kcal（今回）'), React.createElement('div',{className:'big'}, fmt(preferExt?ext.kcal:auto.kcal,0))),
+      React.createElement('div',{className:'stat'}, React.createElement('div',{className:'muted'},'METs・時（今回）'), React.createElement('div',{className:'big'}, fmt(preferExt?(ext.MET_h):(auto.MET_h),2)))
     ),
     React.createElement('div',{className:'row', style:{marginTop:8}},
       React.createElement('div',{className:'stat'},
         React.createElement('div',{className:'muted'},`週間 METs・時 合計（${weekStart==='sun'?'Sun–Sat':'Mon–Sun'}）`),
         React.createElement('div',{className:'big'}, fmt(weekly.sum,2)),
-        (function(){
-          const p = Math.min(100, weekly.sum/23*100);
+        (function(){ const p=Math.min(100, weekly.sum/23*100);
           return React.createElement('div',{className:'bar',style:{marginTop:8}},
             React.createElement('div',{style:{width:`${p}%`}})
           )
@@ -176,17 +222,15 @@ function App(){
           weekly.sum>=33 ? '◎ 週間33 METs・時 も達成！' : (weekly.sum>=23 ? '○ 週間23 達成！' : '▲ 週間23 まであと少し'))
       ),
       React.createElement('div',{className:'stat'},
-        React.createElement('div',{className:'muted'},'週目標（参考：厚労省）'),
-        React.createElement('div',null,'最低ライン：23 METs・時 / 週'),
-        React.createElement('div',null,'推奨ライン：33 METs・時 / 週')
+        React.createElement('div',{className:'muted'},'心拍ゾーン（40–60% HRR）'),
+        React.createElement('div',null,`HRmax: ${fmt(HRcalc.HRmax,0)} bpm`),
+        React.createElement('div',null,`目標: ${fmt(HRcalc.low,0)}–${fmt(HRcalc.high,0)} bpm`),
+        React.createElement('div',null,`現在: ${fmt(HRcalc.pct,0)}% HRR`)
       )
     ),
     React.createElement('div',{className:'btns'},
       React.createElement('button',{onClick:saveLog},'この内容をログ保存'),
-      React.createElement('button',{className:'secondary',onClick:()=>{
-        localStorage.setItem('rehab_v48_last', JSON.stringify({dt,weight,distance,time,ascent,age,restHR,avgHR,borgPre,borgPost,bp5Sys,bp5Dia,extKcal,extSrc,preferExt}));
-        alert('入力値を次回の初期値として保存しました');
-      }},'入力値を次回も使う')
+      React.createElement('button',{className:'secondary',onClick:saveLast},'入力値を次回も使う')
     )
   );
 
@@ -195,7 +239,7 @@ function App(){
     React.createElement('div',{style:{overflowX:'auto', marginTop:8}},
       React.createElement('table',null,
         React.createElement('thead',null, React.createElement('tr',null,
-          ['日時','距離','時間','上り','平均HR','Borg後','BP5分後',
+          ['日時','距離','時間','上り','平均HR','Borg後','BP5分後','速度km/h','勾配%',
            'MET(自動)','VO2(自動)','kcal(自動)','WAT(自動)','METs・時(自動)',
            'MET(外部)','VO2(外部)','kcal(外部)','WAT(外部)','METs・時(外部)',
            '使用METs・時','外部ソース','優先'].map((h,i)=>React.createElement('th',{key:i},h))
@@ -208,7 +252,9 @@ function App(){
             React.createElement('td',null,r.ascent),
             React.createElement('td',null,r.avgHR),
             React.createElement('td',null,r.borgPost),
-            React.createElement('td',null,`${r.bp5Sys}/${r.bp5Dia}`),
+            React.createElement('td',null,`${r.bp5Sys||''}/${r.bp5Dia||''}`),
+            React.createElement('td',null, r.speed_kmh),
+            React.createElement('td',null, r.grade_pct),
             React.createElement('td',null,r.auto_MET),
             React.createElement('td',null,r.auto_VO2),
             React.createElement('td',null,r.auto_kcal),
@@ -229,33 +275,69 @@ function App(){
     React.createElement('div',{className:'btns', style:{marginTop:8}},
       React.createElement('button',{className:'secondary',onClick:()=>{
         const data=JSON.parse(localStorage.getItem('rehab_v48_log')||'[]');
-        const header=['日時','距離km','時間分','上りm','年齢','安静HR','平均HR','Borg後','BP5分後',
+        const header=['日時','距離km','時間分','上りm','年齢','安静HR','平均HR','Borg後','BP5分後','速度km/h','勾配%',
           'MET(自動)','VO2(自動)','kcal(自動)','WAT(自動)','METs・時(自動)',
           'MET(外部)','VO2(外部)','kcal(外部)','WAT(外部)','METs・時(外部)',
           '使用METs・時','外部ソース','表示優先'];
-        const rows=data.map(r=>[r.dt,r.distance,r.time,r.ascent,r.age,r.restHR,r.avgHR,r.borgPost,`${r.bp5Sys}/${r.bp5Dia}`,
+        const rows=data.map(r=>[r.dt,r.distance,r.time,r.ascent,r.age,r.restHR,r.avgHR,r.borgPost,`${r.bp5Sys||''}/${r.bp5Dia||''}`,r.speed_kmh,r.grade_pct,
           r.auto_MET,r.auto_VO2,r.auto_kcal,r.auto_WAT,r.auto_METh,
           r.ext_MET,r.ext_VO2,r.ext_kcal,r.ext_WAT,r.ext_METh,
           r.used_METh, r.extSrc, r.preferExt?'外部':'自動']);
         const csv=[header.join(','),...rows.map(a=>a.join(','))].join('\n');
         const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob);
         const a=document.createElement('a'); a.href=url; a.download='rehab_log_v48.csv'; a.click(); URL.revokeObjectURL(url);
-      }},'CSVで出力')
+      }},'CSVで出力'),
+      React.createElement('button',{className:'secondary',onClick:()=>{ if(confirm('すべてのログを削除しますか？')){ localStorage.removeItem('rehab_v48_log'); setLog([]);} }},'ログを全削除')
     )
   );
 
+  const ChartsView = React.createElement('div',{className:'card'},
+    React.createElement('div',{className:'title'},'グラフ（直近20件）'),
+    (function(){
+      const recent = (log||[]).slice(0,20).reverse();
+      const hr = recent.map(r=>Number(r.avgHR)||0);
+      const met = recent.map(r=>Number(r.preferExt?r.ext_MET:r.auto_MET)||0);
+      const wat = recent.map(r=>Number(r.preferExt?r.ext_WAT:r.auto_WAT)||0);
+      function SimpleChart({data,label}){
+        const w=800, h=220, pad=24;
+        const xs = data.map((_,i)=> pad + (w-2*pad) * (i/(Math.max(1,data.length-1))));
+        const maxY = Math.max(1, ...data);
+        const ys = data.map(v => h-pad - (h-2*pad) * (v/maxY));
+        const points = xs.map((x,i)=>`${x},${ys[i]}`).join(' ');
+        return React.createElement('svg',{width:'100%',height:h,viewBox:`0 0 ${w} ${h}`},
+          React.createElement('rect',{x:0,y:0,width:w,height:h,fill:'#fff',stroke:'#e5e7eb'}),
+          React.createElement('polyline',{points,fill:'none',stroke:'#0ea5e9','strokeWidth':3}),
+          React.createElement('text',{x:pad,y:16,fill:'#334155'},label||''),
+          React.createElement('text',{x:w-pad,y:16,fill:'#334155','textAnchor':'end'},`max ${maxY.toFixed(1)}`)
+        );
+      }
+      return React.createElement(React.Fragment,null,
+        React.createElement(SimpleChart,{data:hr,label:'平均HR (bpm)'}),
+        React.createElement('div',{style:{height:8}}),
+        React.createElement(SimpleChart,{data:met,label:'MET'}),
+        React.createElement('div',{style:{height:8}}),
+        React.createElement(SimpleChart,{data:wat,label:'WAT (W)'})
+      );
+    })()
+  );
+
   const HelpView = React.createElement('div',{className:'card'},
-    React.createElement('div',{className:'title'},'解説（式・AT・METs・時・週開始）'),
-    React.createElement('h3',null,'1) METs・時（MET-hours）とは'),
-    React.createElement('p',null,'強度（MET）× 時間（時間[h]）で表す身体活動量の指標です。厚労省は健康維持に週23（できれば33）METs・時を推奨しています。'),
-    React.createElement('div',{className:'code'},'METs・時 = MET × 時間 (h)'),
-    React.createElement('h3',null,'2) 週合計の考え方と開始曜日'),
-    React.createElement('p',null,'「週の開始曜日」は右上の入力欄で「日曜／月曜」を選べます。選択内容は端末に保存され、次回も引き継がれます。'),
-    React.createElement('h3',null,'3) 参考：式の再掲'),
-    React.createElement('div',{className:'code'},`VO2 = 3.5 + 0.1 × v + 1.8 × v × 勾配
+    React.createElement('div',{className:'title'},'解説（数式・AT・METs・時・週開始）'),
+    React.createElement('h3',null,'1) 主要な式'),
+    React.createElement('div',{className:'code'},`歩行時VO2 (mL/kg/min) = 3.5 + 0.1 × v + 1.8 × v × 勾配
 MET = VO2 / 3.5
-エネルギー消費(kcal) = MET × 時間[h] × 体重[kg]
-入力kcal基準: MET = 入力kcal / (体重 × 時間[h])`)
+消費エネルギー (kcal) = MET × 時間[h] × 体重[kg]
+入力kcal基準の逆算: MET = 入力kcal / (体重 × 時間[h])`),
+    React.createElement('h3',null,'2) METs・時（MET-hours）'),
+    React.createElement('p',null,'強度（MET）×時間（h）。厚労省は健康維持に週23（できれば33）METs・時を推奨。'),
+    React.createElement('h3',null,'3) 週の開始曜日'),
+    React.createElement('p',null,'日曜 or 月曜はじまりを選択可。端末に保存されます。'),
+    React.createElement('h3',null,'4) 生活動作の目安（抜粋）'),
+    React.createElement('div',{className:'code'},`2.0 METs: ゆっくり歩く、食器洗い
+3.0 METs: 普通歩行（~4km/h）
+4.0 METs: 速歩（~5.5km/h）
+5.0 METs: 階段を上る やや速いペース
+6.0+ METs: 早歩き～ジョグ`)
   );
 
   useEffect(()=>{
@@ -264,7 +346,7 @@ MET = VO2 / 3.5
   },[tab]);
 
   return React.createElement(React.Fragment,null,
-    tab==='main'?MainView: tab==='log'?LogView: HelpView
+    tab==='main'?MainView: tab==='log'?LogView: tab==='charts'?ChartsView: HelpView
   );
 }
 ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
