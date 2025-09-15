@@ -34,6 +34,11 @@ function App(){
   const [extSrc,setExtSrc]=useState('watch'); // watch | yamap | manual
   const [preferExt,setPreferExt]=useState(true);
 
+  // week start option: 'sun' or 'mon'
+  const [weekStart,setWeekStart]=useState(()=>{
+    try{ return localStorage.getItem('rehab_week_start')||'sun'; }catch(_){ return 'sun'; }
+  });
+
   // load last
   useEffect(()=>{
     const last = localStorage.getItem('rehab_v48_last');
@@ -46,6 +51,9 @@ function App(){
       }catch(_){}
     }
   },[]);
+
+  // persist weekStart when changed
+  useEffect(()=>{ localStorage.setItem('rehab_week_start', weekStart); },[weekStart]);
 
   // auto calc
   const auto = useMemo(()=>{
@@ -104,7 +112,7 @@ function App(){
       dt, weight, distance, time, ascent, age, restHR, avgHR, borgPre, borgPost, bp5Sys, bp5Dia,
       auto_MET: Number(auto.MET?.toFixed(2)), auto_VO2: Number(auto.VO2?.toFixed(1)), auto_kcal: Number(auto.kcal?.toFixed(0)), auto_WAT: Number(auto.WAT?.toFixed(0)), auto_METh: Number(auto.MET_h?.toFixed(2)),
       ext_MET: Number(ext.MET?.toFixed(2)), ext_VO2: Number(ext.VO2?.toFixed(1)), ext_kcal: Number(ext.kcal?.toFixed(0)), ext_WAT: Number(ext.WAT?.toFixed(0)), ext_METh: Number(ext.MET_h?.toFixed(2)),
-      used_METh: Number(preferred.MET_h?.toFixed(2)),
+      used_METh: Number((preferExt?ext.MET_h:auto.MET_h)?.toFixed(2)),
       extSrc, preferExt
     };
     const arr=[entry, ...log].slice(0,365);
@@ -113,27 +121,42 @@ function App(){
     saveLast();
   };
 
-  // weekly aggregation (Mon-Sun)
+  // weekly aggregation (switchable week start)
   const weekly = useMemo(()=>{
     const now = new Date();
-    const day = (now.getDay()+6)%7; // Mon=0
-    const monday = new Date(now); monday.setDate(now.getDate()-day); monday.setHours(0,0,0,0);
-    const sunday = new Date(monday); sunday.setDate(monday.getDate()+7); // exclusive
+    let start = new Date(now);
+    if(weekStart==='mon'){
+      const day = (now.getDay()+6)%7; // Mon=0
+      start.setDate(now.getDate()-day);
+    }else{ // 'sun'
+      const day = now.getDay(); // Sun=0
+      start.setDate(now.getDate()-day);
+    }
+    start.setHours(0,0,0,0);
+    const end = new Date(start); end.setDate(start.getDate()+7);
     let sum = 0;
     const items = (log||[]).filter(r=>{
       const t = new Date(r.dt);
-      return t>=monday && t<sunday;
+      return t>=start && t<end;
     }).map(r=>{
       const me = r.preferExt ? (r.ext_METh ?? (r.ext_MET*r.time/60)) : (r.auto_METh ?? (r.auto_MET*r.time/60));
       const val = Number(me)||0;
       sum += val;
       return {dt:r.dt, METh:val};
     });
-    return {monday, sunday, sum, items};
-  },[log]);
+    return {start, end, sum, items};
+  },[log, weekStart]);
 
   const MainView = React.createElement('div',{className:'card'},
-    React.createElement('div',{className:'title'},'Rehab Log v4.8（METs・時の週合計）'),
+    React.createElement('div',{className:'title'},'Rehab Log v4.8（METs・時 週合計／週開始切替）'),
+    React.createElement('div',{className:'grid inputs', style:{marginTop:8}},
+      React.createElement('div',null, React.createElement('label',null,'週の開始曜日'),
+        React.createElement('select',{value:weekStart,onChange:e=>setWeekStart(e.target.value)},
+          React.createElement('option',{value:'sun'},'日曜はじまり'),
+          React.createElement('option',{value:'mon'},'月曜はじまり')
+        )
+      )
+    ),
     React.createElement('div',{className:'row', style:{marginTop:8}},
       React.createElement('div',{className:'stat'}, React.createElement('div',{className:'muted'}, preferExt?'MET（外部基準）':'MET（自動計算）'), React.createElement('div',{className:'big'}, fmt(preferred.MET,2))),
       React.createElement('div',{className:'stat'}, React.createElement('div',{className:'muted'},'METs・時（今回）'), React.createElement('div',{className:'big'}, fmt(preferred.MET_h,2))),
@@ -141,7 +164,7 @@ function App(){
     ),
     React.createElement('div',{className:'row', style:{marginTop:8}},
       React.createElement('div',{className:'stat'},
-        React.createElement('div',{className:'muted'},'週間 METs・時 合計（Mon–Sun）'),
+        React.createElement('div',{className:'muted'},`週間 METs・時 合計（${weekStart==='sun'?'Sun–Sat':'Mon–Sun'}）`),
         React.createElement('div',{className:'big'}, fmt(weekly.sum,2)),
         (function(){
           const p = Math.min(100, weekly.sum/23*100);
@@ -222,12 +245,12 @@ function App(){
   );
 
   const HelpView = React.createElement('div',{className:'card'},
-    React.createElement('div',{className:'title'},'解説（式・AT・METs・時）'),
+    React.createElement('div',{className:'title'},'解説（式・AT・METs・時・週開始）'),
     React.createElement('h3',null,'1) METs・時（MET-hours）とは'),
     React.createElement('p',null,'強度（MET）× 時間（時間[h]）で表す身体活動量の指標です。厚労省は健康維持に週23（できれば33）METs・時を推奨しています。'),
     React.createElement('div',{className:'code'},'METs・時 = MET × 時間 (h)'),
-    React.createElement('h3',null,'2) 週合計の考え方'),
-    React.createElement('p',null,'本アプリでは週の計算を月曜はじまり（Mon–Sun）で集計します。ログの「優先（外部 or 自動）」に従い、その回のMETs・時を採用します。'),
+    React.createElement('h3',null,'2) 週合計の考え方と開始曜日'),
+    React.createElement('p',null,'「週の開始曜日」は右上の入力欄で「日曜／月曜」を選べます。選択内容は端末に保存され、次回も引き継がれます。'),
     React.createElement('h3',null,'3) 参考：式の再掲'),
     React.createElement('div',{className:'code'},`VO2 = 3.5 + 0.1 × v + 1.8 × v × 勾配
 MET = VO2 / 3.5
