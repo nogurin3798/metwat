@@ -10,6 +10,20 @@ function Tabs({tab,setTab}){
       key:k, className:`tab ${tab===k?'active':''}`, onClick:()=>setTab(k)}, label))
   );
 }
+// state
+const [autoNow,setAutoNow] = React.useState(() =>
+  (localStorage.getItem('rehab_auto_now') ?? '1') === '1'
+);
+React.useEffect(()=>localStorage.setItem('rehab_auto_now', autoNow?'1':'0'),[autoNow]);
+<div>
+  <label>日時</label>
+  <input type="datetime-local" value={dt} onChange={e=>setDt(e.target.value)} />
+  <div className="pill" style={{marginTop:6}}>
+    <input type="checkbox" checked={autoNow} onChange={e=>setAutoNow(e.target.checked)} />
+    <span>保存時に現在時刻を自動セット</span>
+  </div>
+</div>
+
 
 function App(){
   const [tab,setTab]=useState('main');
@@ -106,7 +120,13 @@ function App(){
   };
 
   const saveLog = ()=>{
+   let dtToUse = dt;
+    if (autoNow) {
+    dtToUse = new Date().toISOString().slice(0,16);
+    setDt(dtToUse);                   // 画面の入力欄も更新
+    }
     const entry = {
+      dt: dtToUse,
       dt, weight, distance, time, ascent, age, restHR, avgHR, hrAfter, hr5min, borgPre, borgPost,
       bpPreSys, bpPreDia, bpPostSys, bpPostDia, bp5Sys, bp5Dia,
       auto_MET: Number(auto.MET?.toFixed(2)), auto_VO2: Number(auto.VO2?.toFixed(1)), auto_kcal: Number(auto.kcal?.toFixed(0)), auto_WAT: Number(auto.WAT?.toFixed(0)), auto_METh: Number(auto.MET_h?.toFixed(2)),
