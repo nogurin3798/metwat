@@ -1,0 +1,43 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MET/WAT Calculator Lite</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h1>MET・WAT・VO2計算 (Lite版)</h1>
+  <section>
+    <h2>パーソナルデータ</h2>
+    年齢: <input id="age" type="number" /> 歳<br/>
+    体重: <input id="weight" type="number" /> kg<br/>
+    最大心拍数（自動計算）: <span id="maxHR">-</span> bpm
+  </section>
+  <section>
+    <h2>スマートウォッチデータ</h2>
+    距離(km): <input id="distance" type="number" /><br/>
+    時間(分): <input id="time" type="number" /><br/>
+    消費カロリー(kcal): <input id="calories" type="number" /><br/>
+    平均心拍数: <input id="avgHR" type="number" /><br/>
+  </section>
+  <button onclick="calculate()">計算</button>
+  <section id="results">
+    <h2>計算結果</h2>
+    MET: <span id="met">-</span><br/>
+    WAT: <span id="wat">-</span><br/>
+    VO2: <span id="vo2">-</span> ml/kg/min<br/>
+    心拍ゾーン（40–60% HRR）: <span id="zone">-</span> bpm<br/>
+    今週のMETs・時合計: <span id="weeklyMets">-</span> / 推奨 23.0
+  </section>
+  <section>
+    <h2>解説</h2>
+    消費カロリー → MET: <code>MET = kcal ÷ (体重 × 時間[h])</code><br/>
+    WAT = MET ÷ 3.5 × 体重 ÷ 6<br/>
+    VO2 = MET × 3.5<br/>
+    METs×時 目標値は 23（厚労省）<br/>
+  </section>
+  <script src="app.js"></script>
+</body>
+</html>
